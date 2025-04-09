@@ -1,0 +1,156 @@
+﻿@page "/portfolio"
+@using CryptoPortfolioApp.Components.Interfaces
+@using CryptoPortfolioApp.Components.Models
+@using CryptoPortfolioApp.Components.Services
+@rendermode InteractiveServer
+@inject IPortfolioCalculatorService PortfolioCalculatorService;
+@inject ILogger<Portfolio> Logger
+
+<h3>Crypto Portfolio Calculator</h3>
+
+<label>Select your portfolio file</label>
+
+<InputFile OnChange="HandleFileSelected" />
+
+
+@if (portfolioResult != null)
+{
+    <p>
+        <br />
+        <label>Refresh Interval (minutes):</label>
+        <input type="number" @bind="UserRefreshInterval" min="1" step="1" />
+        <button @onclick="UpdateTimerInterval">Update Refresh Interval</button>
+    </p>
+    <h4>Results</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Coin</th>
+                <th>Amount</th>
+                <th>Buy Price</th>
+                <th>Initial Value</th>
+                <th>Current Price</th>
+                <th>Current Value</th>
+                <th>Percentage Change</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var coin in portfolioResult.Coins)
+            {
+                <tr>
+                    <td>@coin.Coin</td>
+                    <td>@coin.Amount</td>
+                    <td>@coin.BuyPrice</td>
+                    <td>@coin.InitialValue</td>
+                    <td>@coin.CurrentPrice</td>
+                    <td>@coin.CurrentValue</td>
+                    <td>@coin.PercentageChange.ToString("0.00") %</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <p><strong>Initial Portfolio Value Total:</strong> @portfolioResult.InitialTotal</p>
+    <p><strong>Current Portfolio Value Total:</strong> @portfolioResult.CurrentTotal</p>
+	<p><strong>Overall Change:</strong> @portfolioResult.OverallChange</p>
+    <p><strong>Overall Change Percentage:</strong> @portfolioResult.OverallChangePercentage.ToString("0.00") %</p>
+}
+
+@code {
+   
+    private List<PortfolioEntry> portfolioEntries = new();
+    private PortfolioCalculationResult portfolioResult;
+
+    // Refresh interval in minutes.
+    private int UserRefreshInterval { get; set; } = 5; // Default to 5 minutes
+
+    private System.Threading.Timer updateTimer;
+
+    // Refresh interval in milliseconds.
+    private int RefreshIntervalMilliseconds => UserRefreshInterval * 60 * 1000;
+
+    protected override void OnInitialized()
+    {
+        // Start the timer to refresh portfolio data.
+        updateTimer = new System.Threading.Timer(async _ =>
+        {
+            await RefreshPortfolio();
+        }, null, RefreshIntervalMilliseconds, RefreshIntervalMilliseconds);
+    }
+
+    public async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        // Clear previous entries
+        portfolioEntries.Clear();
+
+        foreach (var file in e.GetMultipleFiles())
+        {
+            using var streamReader = new StreamReader(file.OpenReadStream());
+            var content = await streamReader.ReadToEndAsync();
+            ParsePortfolioEntries(content);
+        }
+
+        // Calculate the portfolio after file upload.
+        await CalculatePortfolio();
+    }
+
+    private void ParsePortfolioEntries(string content)
+    {
+        var lines = content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (var line in lines)
+        {
+            // Each line should be in the format X|COIN|Y
+            var parts = line.Split('|');
+            if (parts.Length == 3)
+            {
+                if (double.TryParse(parts[0], out double amount) &&
+                    double.TryParse(parts[2], out double buyPrice))
+                {
+                    portfolioEntries.Add(new PortfolioEntry
+                        {
+                            Amount = amount,
+                            Coin = parts[1].Trim(),
+                            BuyPrice = buyPrice
+                        });
+                }
+                else
+                {
+                    Logger.LogError("Failed to parse numeric values in line: {Line}", line);
+                }
+            }
+            else
+            {
+                Logger.LogError("Incorrect file format in line: {Line}", line);
+            }
+        }
+    }
+
+    private async Task CalculatePortfolio()
+    {
+        if (portfolioEntries.Count > 0)
+        {
+            portfolioResult = await PortfolioCalculatorService.CalculateAsync(portfolioEntries);
+            Logger.LogInformation("Portfolio calculated successfully.");
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task RefreshPortfolio()
+    {
+        Logger.LogInformation("Refreshing portfolio data...");
+        await CalculatePortfolio();
+    }
+
+    private void UpdateTimerInterval()
+    {
+        // Update the timer interval with the new value
+        updateTimer?.Change(RefreshIntervalMilliseconds, RefreshIntervalMilliseconds);
+        Logger.LogInformation("Timer interval updated to {0} minutes.", UserRefreshInterval);
+    }
+
+    public void Dispose()
+    {
+        updateTimer?.Dispose();
+    }
+}
+
