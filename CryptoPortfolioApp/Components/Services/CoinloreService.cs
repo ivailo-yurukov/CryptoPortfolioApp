@@ -18,7 +18,7 @@ namespace CryptoPortfolioApp.Components.Services
         {
             try
             {
-                var response = await _httpClient.GetFromJsonAsync<CoinApiResponse>("api/tickers/");
+                var response = await _httpClient.GetFromJsonAsync<CoinApiResponse>("https://api.coinlore.net/api/tickers/");
                 return response?.Data ?? new List<Coin>();
             }
             catch (Exception ex)

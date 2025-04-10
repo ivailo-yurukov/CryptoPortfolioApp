@@ -6,10 +6,10 @@ namespace CryptoPortfolioApp.Components.Services
 {
     public class PortfolioCalculatorService : IPortfolioCalculatorService
     {
-        private readonly CoinloreService _coinloreService;
+        private readonly ICoinloreService _coinloreService;
         private readonly ILogger<PortfolioCalculatorService> _logger;
 
-        public PortfolioCalculatorService(CoinloreService coinloreService, ILogger<PortfolioCalculatorService> logger)
+        public PortfolioCalculatorService(ICoinloreService coinloreService, ILogger<PortfolioCalculatorService> logger)
         {
             _coinloreService = coinloreService;
             _logger = logger;

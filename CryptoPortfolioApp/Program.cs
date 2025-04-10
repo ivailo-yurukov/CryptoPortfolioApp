@@ -17,10 +17,7 @@ builder.Host.UseSerilog();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddHttpClient<CoinloreService>(client =>
-{
-    client.BaseAddress = new Uri("https://api.coinlore.net/");
-});
+builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<IPortfolioCalculatorService, PortfolioCalculatorService>();
 builder.Services.AddScoped<ICoinloreService, CoinloreService>();
@@ -36,6 +33,10 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseAntiforgery();
+
+app.MapStaticAssets();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
