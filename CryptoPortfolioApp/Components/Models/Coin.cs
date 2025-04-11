@@ -13,7 +13,6 @@ namespace CryptoPortfolioApp.Components.Models
         [JsonPropertyName("name")]
         public string Name { get; set; }
 
-        // Example property – the API returns price as a string; adjust if necessary.
         [JsonPropertyName("price_usd")]
         public string PriceUsd { get; set; }
     }
